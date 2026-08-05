@@ -47,6 +47,86 @@
     return itemValue('address');
   }
 
+  /* ---------- address parsing ---------- */
+
+  // Maps writes country names, the CSV wants ISO 3166-1 alpha-2. Only the
+  // names Maps actually renders in an English locale are listed.
+  const COUNTRY_CODES = {
+    'united states': 'US', 'usa': 'US', 'canada': 'CA', 'mexico': 'MX',
+    'united kingdom': 'GB', 'uk': 'GB', 'ireland': 'IE', 'france': 'FR',
+    'germany': 'DE', 'spain': 'ES', 'portugal': 'PT', 'italy': 'IT',
+    'netherlands': 'NL', 'belgium': 'BE', 'switzerland': 'CH', 'austria': 'AT',
+    'denmark': 'DK', 'sweden': 'SE', 'norway': 'NO', 'finland': 'FI',
+    'poland': 'PL', 'czechia': 'CZ', 'czech republic': 'CZ', 'greece': 'GR',
+    'australia': 'AU', 'new zealand': 'NZ', 'japan': 'JP', 'south korea': 'KR',
+    'china': 'CN', 'india': 'IN', 'singapore': 'SG', 'brazil': 'BR',
+    'argentina': 'AR', 'chile': 'CL', 'colombia': 'CO', 'south africa': 'ZA',
+    'israel': 'IL'
+  };
+
+  // Addresses arrive as comma-separated segments, most specific first. The
+  // tail segment carries region/postal in a country-specific shape; the
+  // segment before the city is the street line.
+  function parseAddress(raw) {
+    const out = {
+      address_line_1: '', address_line_2: '', city: '',
+      state_or_region: '', postal_code: '', country_code: ''
+    };
+    const parts = String(raw || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return out;
+
+    // Trailing country name, when Maps bothers to include one.
+    const code = COUNTRY_CODES[parts[parts.length - 1].toLowerCase().replace(/\./g, '')];
+    if (code && parts.length > 1) {
+      out.country_code = code;
+      parts.pop();
+    }
+
+    if (parts.length > 1) {
+      const tail = parts.pop();
+      let m;
+      if ((m = tail.match(/^([A-Za-z]{2})\.?\s+(\d{5}(?:-\d{4})?)$/))) {
+        // "PA 19107"
+        out.state_or_region = m[1].toUpperCase();
+        out.postal_code = m[2];
+        if (!out.country_code) out.country_code = 'US';
+      } else if ((m = tail.match(/^([A-Za-z]{2})\s+([A-Za-z]\d[A-Za-z]\s?\d[A-Za-z]\d)$/))) {
+        // "ON M5V 2T6"
+        out.state_or_region = m[1].toUpperCase();
+        out.postal_code = m[2].toUpperCase();
+        if (!out.country_code) out.country_code = 'CA';
+      } else if ((m = tail.match(/^(.+?)\s+([A-Z]{2,3})\s+(\d{4})$/))) {
+        // "Sydney NSW 2000" — city, region and postal share the segment.
+        out.city = m[1];
+        out.state_or_region = m[2];
+        out.postal_code = m[3];
+      } else if ((m = tail.match(/^(.+?)\s+([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})$/i))) {
+        // "London SW1A 2AA" — no region component at all.
+        out.city = m[1];
+        out.postal_code = m[2].toUpperCase();
+      } else if ((m = tail.match(/^(\d{4,6})\s+(.+)$/))) {
+        // "10115 Berlin"
+        out.postal_code = m[1];
+        out.city = m[2];
+      } else if ((m = tail.match(/^(.+?)\s+(\d{4,6})$/))) {
+        // "Milano 20121"
+        out.city = m[1];
+        out.postal_code = m[2];
+      } else if (/^[A-Za-z]{2}$/.test(tail)) {
+        out.state_or_region = tail.toUpperCase();
+      } else {
+        out.city = tail;
+      }
+    }
+
+    // Whatever is left is the city (unless the tail already supplied one)
+    // followed by the street lines.
+    if (!out.city && parts.length > 1) out.city = parts.pop();
+    out.address_line_1 = parts.shift() || '';
+    out.address_line_2 = parts.join(', ');
+    return out;
+  }
+
   function getPlusCode() {
     // data-item-id is "oloc" for plus codes.
     let v = itemValue('oloc');
@@ -89,9 +169,17 @@
     const plus = getPlusCode();
     const dec = decodePlusCode(plus);
     const ref = refLatLng();
+    const address = getAddress();
+    const parts = parseAddress(address);
     return {
       name: name,
-      address: getAddress(),
+      address: address,
+      address_line_1: parts.address_line_1,
+      address_line_2: parts.address_line_2,
+      city: parts.city,
+      state_or_region: parts.state_or_region,
+      postal_code: parts.postal_code,
+      country_code: parts.country_code,
       plus_code: dec ? dec.full : plus,
       latitude: dec ? dec.lat : (ref ? ref.lat : ''),
       longitude: dec ? dec.lng : (ref ? ref.lng : ''),
@@ -115,11 +203,32 @@
     flash('Added: ' + p.name);
   }
 
+  // Exactly the columns the importer accepts, in order. Everything else we
+  // scrape (plus_code, url, coord_source, added_at) stays in localStorage.
+  const CSV_COLS = [
+    'name', 'address_line_1', 'address_line_2', 'city',
+    'state_or_region', 'postal_code', 'country_code', 'latitude', 'longitude'
+  ];
+
   function toCSV(rows) {
-    const cols = ['name', 'address', 'plus_code', 'latitude', 'longitude', 'coord_source', 'url', 'added_at'];
     const esc = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-    const lines = [cols.join(',')];
-    rows.forEach(r => lines.push(cols.map(c => esc(r[c])).join(',')));
+    const lines = [CSV_COLS.join(',')];
+    rows.forEach(r => {
+      // Rows saved before these columns existed only carry the raw address.
+      const a = r.address_line_1 === undefined ? parseAddress(r.address) : r;
+      const rec = {
+        name: r.name,
+        address_line_1: a.address_line_1,
+        address_line_2: a.address_line_2,
+        city: a.city,
+        state_or_region: a.state_or_region,
+        postal_code: a.postal_code,
+        country_code: a.country_code,
+        latitude: r.latitude,
+        longitude: r.longitude
+      };
+      lines.push(CSV_COLS.map(c => esc(rec[c])).join(','));
+    });
     return lines.join('\r\n');
   }
 
