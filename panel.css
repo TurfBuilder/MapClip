@@ -1,0 +1,112 @@
+#tb-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 300px;
+  z-index: 2147483000;
+  background: #fff;
+  color: #202124;
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .3);
+  font: 13px/1.4 Roboto, Arial, sans-serif;
+  overflow: hidden;
+}
+
+#tb-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: #1a73e8;
+  color: #fff;
+  font-weight: 600;
+}
+
+#tb-toggle {
+  background: none;
+  border: 0;
+  color: #fff;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+}
+
+#tb-panel.tb-collapsed #tb-body { display: none; }
+
+#tb-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.tb-empty { padding: 12px 10px; color: #5f6368; }
+
+.tb-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.tb-info { flex: 1; min-width: 0; }
+.tb-name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tb-sub { color: #5f6368; font-size: 11px; }
+
+.tb-row button {
+  background: none;
+  border: 0;
+  color: #a00;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+#tb-actions {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid #eee;
+}
+
+#tb-actions button {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 12px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  background: #f8f9fa;
+  cursor: pointer;
+}
+
+#tb-actions button:hover { background: #eef1f5; }
+#tb-actions .tb-danger { color: #c5221f; flex: 0 0 56px; }
+
+#tb-add-btn {
+  margin: 6px 0 2px;
+  padding: 6px 12px;
+  border: 1px solid #1a73e8;
+  border-radius: 16px;
+  background: #fff;
+  color: #1a73e8;
+  font: 500 13px Roboto, Arial, sans-serif;
+  cursor: pointer;
+}
+
+#tb-add-btn:hover { background: #e8f0fe; }
+
+#tb-toast {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483001;
+  display: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  background: #202124;
+  color: #fff;
+  font: 13px Roboto, Arial, sans-serif;
+}
+
+#tb-toast.tb-err { background: #c5221f; }

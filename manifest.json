@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "TurfBuilder",
+  "version": "1.0.0",
+  "description": "Collect Google Maps places (name, address, lat/lng from plus code) and export as CSV.",
+  "content_scripts": [
+    {
+      "matches": ["https://www.google.com/maps/*", "https://maps.google.com/*"],
+      "js": ["olc.js", "content.js"],
+      "css": ["panel.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "turfbuilder@joeldesante",
+      "strict_min_version": "115.0"
+    }
+  }
+}
