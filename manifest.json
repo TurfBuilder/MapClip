@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "TurfBuilder",
+  "name": "TurfBuilder MapClip",
   "version": "1.0.0",
   "description": "Collect Google Maps places (name, address, lat/lng from plus code) and export as CSV.",
   "content_scripts": [
